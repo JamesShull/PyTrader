@@ -1,0 +1,29 @@
+/* Optional: Add custom Textual CSS here */
+
+/* Example:
+Screen {
+    layout: vertical;
+}
+
+#main_label {
+    width: 100%;
+    text-align: center;
+    padding: 1 2;
+    background: $primary-background-darken-2;
+    color: $text;
+}
+
+#status_bar {
+    width: 100%;
+    text-align: center;
+    padding: 0 1;
+    background: $boost;
+    color: $text;
+    dock: bottom;
+}
+
+#main_container {
+    align: center middle;
+    height: 100%;
+}
+*/
