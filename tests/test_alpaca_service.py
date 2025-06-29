@@ -2,6 +2,10 @@ import pytest
 from respx import MockRouter
 from dotenv import load_dotenv, find_dotenv
 import os
+import time
+from unittest.mock import patch
+
+from ratelimit import RateLimitException
 
 # Load .env file before importing AlpacaService.
 # This helps if you have a .env file for local testing with real (paper) keys,
@@ -269,3 +273,143 @@ def test_get_quotes_service_not_initialized(alpaca_service_no_keys: AlpacaServic
 # from alpaca_trade_api.common import APIError
 # This would be if you were testing the internal processing of the Quote objects more deeply.
 # For these tests, mocking the JSON response is generally sufficient.
+
+# --- Tests for Rate Limiting ---
+
+MOCK_ACCOUNT_DATA_FOR_RATE_LIMIT_TESTS = {
+    "account_number": "rate_limit_test_acct",
+    "status": "ACTIVE",
+    "equity": "1000.00",
+    "buying_power": "2000.00",
+    "cash": "500.00",
+    "portfolio_value": "1000.00",
+    "daytrade_count": 0,
+    "currency": "USD"
+}
+
+MOCK_QUOTES_DATA_FOR_RATE_LIMIT_TESTS = {
+    "XYZ": {"ap": 10.10, "bp": 10.00, "as": 10, "bs": 10, "t": "2023-10-27T10:00:00Z"}
+}
+
+@pytest.mark.usefixtures("manage_env_vars_for_service")
+@patch('time.sleep', return_value=None) # Mock time.sleep to prevent actual delays
+def test_get_account_info_rate_limit_per_second(
+    mock_sleep, respx_mock: MockRouter, alpaca_service_valid_keys: AlpacaService
+):
+    """Test per-second rate limit for get_account_info."""
+    service = alpaca_service_valid_keys
+    respx_mock.get("/v2/account").respond(json=MOCK_ACCOUNT_DATA_FOR_RATE_LIMIT_TESTS)
+
+    # Exhaust the per-second limit (10 calls)
+    for i in range(10):
+        print(f"Call {i+1} within per-second limit")
+        account_info = service.get_account_info()
+        assert "error" not in account_info, f"Call {i+1} failed unexpectedly"
+        assert respx_mock.get("/v2/account").call_count == i + 1
+
+
+    # Next call should trigger rate limit
+    print("Call 11, expecting rate limit")
+    account_info_ratelimited = service.get_account_info()
+    assert "error" in account_info_ratelimited
+    assert "Rate limit exceeded" in account_info_ratelimited["error"]
+    # The actual API call should not happen if rate limit is correctly applied before the call
+    assert respx_mock.get("/v2/account").call_count == 10 # Should not have increased
+
+    # Wait for the rate limit period to pass (mocked)
+    # time.sleep(1) # Original call to time.sleep
+    # In the ratelimit library, the period is 1 second.
+    # To reset the limit, we need to advance time.
+    # However, the decorator itself raises RateLimitException immediately.
+    # The library's internal clock needs to be considered.
+    # For testing, we rely on the exception being raised.
+    # If we wanted to test *after* the period, we'd need to manipulate the library's clock
+    # or use a more sophisticated time mocking like `freezegun`.
+    # For now, verifying the exception is sufficient.
+
+@pytest.mark.usefixtures("manage_env_vars_for_service")
+@patch('time.sleep', return_value=None) # Mock time.sleep
+def test_get_quotes_rate_limit_per_second(
+    mock_sleep, respx_mock: MockRouter, alpaca_service_valid_keys: AlpacaService
+):
+    """Test per-second rate limit for get_quotes."""
+    service = alpaca_service_valid_keys
+    symbols = ["XYZ"]
+    respx_mock.get(f"{MOCK_PAPER_URL}/v2/stocks/quotes/latest", params={"symbols": ",".join(symbols)}).respond(json={"quotes": MOCK_QUOTES_DATA_FOR_RATE_LIMIT_TESTS})
+
+    for i in range(10):
+        quotes = service.get_quotes(symbols)
+        assert "error" not in quotes
+        assert respx_mock.calls.call_count == i + 1 # Each call hits the mock
+
+    quotes_ratelimited = service.get_quotes(symbols)
+    assert "error" in quotes_ratelimited
+    assert "Rate limit exceeded" in quotes_ratelimited["error"]
+    assert respx_mock.calls.call_count == 10
+
+
+# Note: Testing the per-minute limit (200 calls) directly would be slow even with mocked sleep,
+# as it would involve 200 loop iterations.
+# The logic for per-minute and per-second limits is the same in the `ratelimit` library.
+# Thus, testing the per-second limit thoroughly gives good confidence.
+# If specific interaction between the two limits needed testing, a more complex setup
+# with time manipulation (e.g., using `freezegun`) would be beneficial.
+
+@pytest.mark.usefixtures("manage_env_vars_for_service")
+@patch('time.time') # Mock time.time for finer control if needed by ratelimit internals
+@patch('time.sleep', return_value=None)
+def test_get_account_info_rate_limit_per_minute_conceptual(
+    mock_sleep, mock_time, respx_mock: MockRouter, alpaca_service_valid_keys: AlpacaService
+):
+    """
+    Conceptual test for per-minute rate limit for get_account_info.
+    This test illustrates the idea but won't run 200 iterations for speed.
+    It relies on the `ratelimit` library correctly handling multiple decorators.
+    """
+    service = alpaca_service_valid_keys
+    # Assume current time is 0 for simplicity in this conceptual test
+    mock_time.return_value = 0.0
+
+    # Mock the API response
+    respx_mock.get("/v2/account").respond(json=MOCK_ACCOUNT_DATA_FOR_RATE_LIMIT_TESTS)
+
+    # Simulate making 10 calls (well within 200/min, but hits 10/sec)
+    for i in range(10):
+        # print(f"Minute test call {i+1}")
+        account_info = service.get_account_info()
+        assert "error" not in account_info, f"Call {i+1} (minute test) failed"
+
+    # This call should be rate-limited by the 10 calls/sec limit
+    # print("Minute test call 11 (expecting per-second limit)")
+    account_info_ratelimited_sec = service.get_account_info()
+    assert "error" in account_info_ratelimited_sec
+    assert "Rate limit exceeded" in account_info_ratelimited_sec["error"]
+    # Total calls to actual API should be 10
+    assert respx_mock.get("/v2/account").call_count == 10
+
+    # Now, let's advance time by 1 second to bypass the per-second limit,
+    # but still be within the same minute for the per-minute limit.
+    mock_time.return_value = 1.0
+    # The ratelimit library stores the time of the last call.
+    # Advancing time with mock_time should allow subsequent calls if the period has passed.
+
+    # The following calls would test the 200/min limit if we made enough.
+    # For this conceptual test, we'll just make one more call.
+    # This call should now pass the per-second limit because time has advanced.
+    # print("Minute test call 12 (expecting success after 1s wait)")
+    account_info_after_wait = service.get_account_info()
+    assert "error" not in account_info_after_wait, \
+        f"Call after 1s wait failed: {account_info_after_wait.get('error', '')}"
+    assert respx_mock.get("/v2/account").call_count == 11 # One more successful call
+
+    # To truly test the 200/min limit, one would need to:
+    # 1. Make 10 calls.
+    # 2. Advance time by 1s.
+    # 3. Make another 10 calls.
+    # 4. Repeat until 200 calls are made within less than 60s of mocked time.
+    # 5. The 201st call (if made before 60s of mocked time have passed from the first call)
+    #    should then be blocked by the per-minute limit.
+    # This is complex with basic time mocking. `freezegun` is better suited for this.
+    # Given the library's reliability, testing the stricter per-second limit and
+    # ensuring the decorators are applied is usually sufficient.
+    pass # Test is conceptual and focuses on the interaction

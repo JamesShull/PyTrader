@@ -1,6 +1,8 @@
 import os
+import time
 
 import alpaca_trade_api as tradeapi
+from ratelimit import limits, RateLimitException
 import click
 from colorama import Fore, Style
 from colorama import init as colorama_init
@@ -19,6 +21,16 @@ load_dotenv()
 # API_KEY = os.getenv("APCA_API_KEY_ID") # Will be read in AlpacaService.__init__
 # API_SECRET = os.getenv("APCA_API_SECRET_KEY") # Will be read in AlpacaService.__init__
 # BASE_URL = os.getenv("APCA_API_BASE_URL") # Will be read in AlpacaService.__init__
+
+# Define rate limits
+# Alpaca: 200 requests per minute, burst of 10 requests per second.
+# We'll use two decorators to handle this.
+# The library handles them in order, so the stricter per-second limit will be checked first.
+CALLS_PER_SECOND = 10
+PERIOD_PER_SECOND = 1  # 1 second
+
+CALLS_PER_MINUTE = 200
+PERIOD_PER_MINUTE = 60  # 60 seconds
 
 
 class AlpacaService:
@@ -52,6 +64,8 @@ class AlpacaService:
             self.error_message = f"Failed to connect to Alpaca API at {effective_base_url}: {e}"
             print(Fore.RED + self.error_message)
 
+    @limits(calls=CALLS_PER_SECOND, period=PERIOD_PER_SECOND)
+    @limits(calls=CALLS_PER_MINUTE, period=PERIOD_PER_MINUTE)
     def get_account_info(self):
         # Prioritize checking if initialization itself failed
         if self.error_message and not self.api:
@@ -71,9 +85,17 @@ class AlpacaService:
                 "Daytrade Count": account.daytrade_count,
                 "Currency": account.currency,
             }
+        except RateLimitException as rle:
+            # Wait for the remaining period and retry, or just return an error
+            # For now, let's return an error. A more sophisticated approach might retry.
+            # The `ratelimit` library sleeps by default if `raise_on_limit` is False,
+            # but we are using the default `raise_on_limit=True`.
+            return {"error": f"Rate limit exceeded for get_account_info: {rle}. Please try again shortly."}
         except Exception as e:
             return {"error": f"Failed to fetch account info: {e}"}
 
+    @limits(calls=CALLS_PER_SECOND, period=PERIOD_PER_SECOND)
+    @limits(calls=CALLS_PER_MINUTE, period=PERIOD_PER_MINUTE)
     def get_quotes(self, symbols: list[str]):
         """Fetches the latest quotes for a list of symbols."""
         if self.error_message and not self.api:
@@ -101,6 +123,8 @@ class AlpacaService:
                     "timestamp": quote.t.isoformat() if quote.t else None,
                 }
             return processed_quotes
+        except RateLimitException as rle:
+            return {"error": f"Rate limit exceeded for get_quotes: {rle}. Please try again shortly."}
         except Exception as e:
             return {"error": f"Failed to fetch quotes: {e}"}
 
