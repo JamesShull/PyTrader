@@ -275,6 +275,182 @@ def cli():
     pass
 
 
+# Define a simple strategy (e.g., Buy and Hold or SMA Crossover)
+# Moved to module level to be importable by tests
+import backtrader as bt # backtrader needs to be imported here for the class definition
+
+class SimpleSMAStrategy(bt.Strategy):
+    params = (('sma_period', 20),)
+
+    def __init__(self):
+        self.sma = bt.indicators.SimpleMovingAverage(
+            self.datas[0], period=self.p.sma_period
+        )
+        # To avoid "array assignment index out of range" if data is too short for period
+        self.dataclose = self.datas[0].close
+
+    def next(self):
+        # Simply log the closing price of the series from the reference
+        # self.log('Close, %.2f' % self.dataclose[0])
+
+        # Check if we are in the market
+        if not self.position:
+            # Not yet ... we MIGHT BUY if ...
+            if len(self.sma.lines.sma) > 0 and self.dataclose[0] > self.sma[0]: # Ensure SMA has calculated values
+                # BUY, BUY, BUY!!! (with default parameters)
+                # self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                self.buy()
+        else:
+            if len(self.sma.lines.sma) > 0 and self.dataclose[0] < self.sma[0]: # Ensure SMA has calculated values
+                # SELL, SELL, SELL!!! (with all parameters)
+                # self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                self.sell()
+
+
+@cli.command()
+@click.option("--start-date", type=str, required=True, help="Start date for backtesting (YYYY-MM-DD).")
+@click.option("--end-date", type=str, required=True, help="End date for backtesting (YYYY-MM-DD).")
+@click.option("--symbol", type=str, required=True, help="Stock symbol to backtest (e.g., AAPL).")
+def backtest(start_date: str, end_date: str, symbol: str):
+    """Run a simple backtest for a given stock and date range."""
+    global SimpleSMAStrategy # Explicitly state we are using the global/module-level class
+    from datetime import datetime # bt is already imported at module level
+
+    # Create a Cerebro entity
+    cerebro = bt.Cerebro()
+
+    # Datasource (example: Yahoo Finance)
+    # Note: Alpaca data feed would be more appropriate if available and integrated with backtrader
+    # For simplicity, this example might use YahooFinanceData if directly usable
+    # or expect a CSV file. Let's try with Alpaca's historical data if possible,
+    # otherwise, we might need to adjust data fetching.
+
+    # For now, let's assume we have a way to get data into backtrader's format.
+    # This part will likely need adjustment based on how Alpaca data is fed.
+    # Example: Fetching data using Alpaca API and converting to pandas DataFrame
+    # then feeding it to Backtrader.
+
+    alpaca_service = AlpacaService()
+    if alpaca_service.error_message and not alpaca_service.api:
+        print(Fore.RED + f"Error: {alpaca_service.error_message}")
+        return
+
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    except ValueError:
+        print(Fore.RED + "Error: Invalid date format. Please use YYYY-MM-DD.")
+        return
+
+    print(Fore.CYAN + f"Fetching historical data for {symbol} from {start_date} to {end_date}...")
+
+    try:
+        # Correctly call get_bars method
+        bars = alpaca_service.api.get_bars(symbol, tradeapi.TimeFrame.Day, start_date, end_date).df
+        # Ensure columns are named as expected by Backtrader: open, high, low, close, volume
+        bars = bars.rename(columns={
+            'o': 'open', 'h': 'high', 'l': 'low', 'c': 'close', 'v': 'volume'
+        })
+        # Backtrader expects datetime index to be timezone naive for pandas df
+        if bars.empty:
+            print(Fore.YELLOW + f"No data found for {symbol} in the given date range.")
+            return
+
+        if bars.index.tz is not None:
+            bars.index = bars.index.tz_localize(None)
+
+        # Ensure enough data for the SMA period
+        if len(bars) < SimpleSMAStrategy.params.sma_period:
+            print(Fore.YELLOW + f"Not enough data ({len(bars)} bars) for SMA period ({SimpleSMAStrategy.params.sma_period}). Skipping backtest.")
+            return
+
+        data_feed = bt.feeds.PandasData(dataname=bars)
+        cerebro.adddata(data_feed)
+    except Exception as e:
+        print(Fore.RED + f"Error fetching or processing data for {symbol}: {e}")
+        return
+
+
+    # Define a simple strategy (e.g., Buy and Hold or SMA Crossover)
+    class SimpleSMAStrategy(bt.Strategy):
+        params = (('sma_period', 20),)
+
+        def __init__(self):
+            self.sma = bt.indicators.SimpleMovingAverage(
+                self.datas[0], period=self.p.sma_period
+            )
+
+        def next(self):
+            # Simple buy if close is above SMA
+            if not self.position: # Not in the market
+                if self.datas[0].close > self.sma:
+                    self.buy()
+            # Simple sell if close is below SMA
+            elif self.datas[0].close < self.sma:
+                self.sell()
+
+    cerebro.addstrategy(SimpleSMAStrategy)
+
+    # Set initial cash
+    cerebro.broker.setcash(100000.0)
+
+    # Add analyzers
+    cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe_ratio')
+    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trade_analyzer')
+    cerebro.addanalyzer(bt.analyzers.SQN, _name='sqn')
+
+
+    print(Fore.CYAN + "Running backtest...")
+    results = cerebro.run()
+    print(Fore.CYAN + "Backtest complete.")
+
+    # Print out the final result
+    final_value = cerebro.broker.getvalue()
+    print(Fore.GREEN + f"Final Portfolio Value: ${final_value:,.2f}")
+
+    # Print analysis results
+    try:
+        strategy_instance = results[0] # Get the first strategy instance (assuming one strategy)
+        print("\n--- Strategy Analysis ---")
+        # Check if sharpe ratio is NaN (can happen if no trades or std dev is zero)
+        sharpe_ratio_analysis = strategy_instance.analyzers.sharpe_ratio.get_analysis()
+        sharpe_ratio = sharpe_ratio_analysis.get('sharperatio', float('nan'))
+        if sharpe_ratio is not None and not isinstance(sharpe_ratio, float) or sharpe_ratio != sharpe_ratio: # Check for NaN
+             print(f"Sharpe Ratio: N/A (not enough data or trades)")
+        else:
+            print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+
+        sqn_analysis = strategy_instance.analyzers.sqn.get_analysis()
+        sqn_value = sqn_analysis.get('sqn', float('nan'))
+        if sqn_value is not None and not isinstance(sqn_value, float) or sqn_value != sqn_value: # Check for NaN
+            print(f"SQN: N/A")
+        else:
+            print(f"SQN: {sqn_value:.2f}")
+
+
+        trade_analysis = strategy_instance.analyzers.trade_analyzer.get_analysis()
+        if trade_analysis and trade_analysis.total.total > 0 : # Check if there are any trades
+            print("\n--- Trade Analysis ---")
+            print(f"Total Trades: {trade_analysis.total.total}")
+            print(f"Winning Trades: {trade_analysis.won.total}")
+            print(f"Losing Trades: {trade_analysis.lost.total}")
+            if trade_analysis.won.total > 0:
+                 print(f"Average Win: ${trade_analysis.won.pnl.average:,.2f}")
+            if trade_analysis.lost.total > 0:
+                print(f"Average Loss: ${trade_analysis.lost.pnl.average:,.2f}")
+            print(f"Net PnL: ${trade_analysis.pnl.net.total:,.2f}")
+        else:
+            print("\nNo trades were executed or analyzable.")
+
+    except Exception as e:
+        print(Fore.RED + f"Error during analysis printing: {e}")
+
+    # Optionally, plot the results if matplotlib is installed and a display is available
+    # cerebro.plot() # This might require GUI, consider if suitable for CLI
+
+    pass
+
+
 @cli.command()
 @click.option("--symbol", "-s", type=str, help="A single stock symbol to watch.")
 @click.option("--watchlist", "-w", type=click.Path(exists=False, dir_okay=False), default="watch.json", help="Path to a JSON file with a list of stock symbols.")
