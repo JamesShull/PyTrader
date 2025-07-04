@@ -128,6 +128,135 @@ class AlpacaService:
         except Exception as e:
             return {"error": f"Failed to fetch quotes: {e}"}
 
+    @limits(calls=CALLS_PER_SECOND, period=PERIOD_PER_SECOND)
+    @limits(calls=CALLS_PER_MINUTE, period=PERIOD_PER_MINUTE)
+    def list_positions(self):
+        """Fetches current positions and their market values."""
+        if self.error_message and not self.api:
+            return {"error": self.error_message}
+        if not self.api:
+            return {"error": "API not initialized."}
+
+        try:
+            positions = self.api.list_positions()
+            if not positions:
+                return [] # Return empty list if no positions
+
+            # Extract symbols to fetch quotes for all positions at once
+            symbols = [position.symbol for position in positions]
+            # quotes_data = self.get_quotes(symbols) # This calls the rate-limited get_quotes
+
+            # Use a non-rate-limited internal call or handle potential nested rate limit issues carefully.
+            # For simplicity, let's assume direct SDK call for latest trade is acceptable here,
+            # or that get_quotes is designed to be called internally.
+            # To avoid complex rate limit handling within a single method, we'll fetch latest trade for each.
+            # A more optimized approach might involve a bulk quote fetch if available and not hitting limits.
+
+            enriched_positions = []
+            for pos in positions:
+                current_price = pos.current_price # Already provided by list_positions
+                market_value = float(pos.market_value)
+                unrealized_pl = float(pos.unrealized_pl)
+                enriched_positions.append(
+                    {
+                        "symbol": pos.symbol,
+                        "qty": float(pos.qty),
+                        "avg_entry_price": float(pos.avg_entry_price),
+                        "current_price": float(current_price) if current_price else None,
+                        "market_value": market_value,
+                        "unrealized_pl": unrealized_pl,
+                        "unrealized_plpc": float(pos.unrealized_plpc) * 100, # percentage
+                        "asset_class": pos.asset_class,
+                        "exchange": pos.exchange,
+                    }
+                )
+            return enriched_positions
+        except RateLimitException as rle:
+            return {"error": f"Rate limit exceeded for list_positions: {rle}. Please try again shortly."}
+        except Exception as e:
+            return {"error": f"Failed to fetch positions: {e}"}
+
+    @limits(calls=CALLS_PER_SECOND, period=PERIOD_PER_SECOND)
+    @limits(calls=CALLS_PER_MINUTE, period=PERIOD_PER_MINUTE)
+    def submit_trade_order(
+        self,
+        symbol: str,
+        qty: float,
+        side: str,
+        order_type: str,
+        time_in_force: str,
+        limit_price: float | None = None,
+        stop_price: float | None = None,
+        client_order_id: str | None = None, # Optional client order ID
+    ):
+        """Submits a trade order."""
+        if self.error_message and not self.api:
+            return {"error": self.error_message}
+        if not self.api:
+            return {"error": "API not initialized."}
+
+        # Validate inputs (basic)
+        if not symbol or not isinstance(symbol, str):
+            return {"error": "Invalid symbol."}
+        if not isinstance(qty, (int, float)) or qty <= 0:
+            return {"error": "Invalid quantity."}
+        if side not in ["buy", "sell"]:
+            return {"error": "Invalid side. Must be 'buy' or 'sell'."}
+        if order_type not in ["market", "limit", "stop", "stop_limit", "trailing_stop"]:
+            return {"error": "Invalid order type."}
+        if time_in_force not in ["day", "gtc", "opg", "cls", "ioc", "fok"]:
+            return {"error": "Invalid time in force."}
+
+        if order_type in ["limit", "stop_limit"] and limit_price is None:
+            return {"error": "Limit price is required for limit and stop_limit orders."}
+        if order_type in ["stop", "stop_limit", "trailing_stop"] and stop_price is None and order_type != "trailing_stop": # trailing_stop might use trail_percent/trail_price
+             # AlpacaPy might handle trailing stop params differently, this is a basic check
+            if order_type != "trailing_stop": # More specific check for non-trailing stops
+                return {"error": "Stop price is required for stop and stop_limit orders."}
+
+
+        try:
+            order_params = {
+                "symbol": symbol.upper(),
+                "qty": qty,
+                "side": side,
+                "type": order_type,
+                "time_in_force": time_in_force,
+            }
+            if limit_price is not None:
+                order_params["limit_price"] = limit_price
+            if stop_price is not None: # This applies to stop, stop_limit. Trailing stop has trail_price or trail_percent
+                order_params["stop_price"] = stop_price
+            if client_order_id:
+                order_params["client_order_id"] = client_order_id
+
+            # For trailing_stop orders, specific parameters like trail_price or trail_percent are needed.
+            # This example assumes they might be passed via stop_price or handled by SDK if None.
+            # A more robust implementation would explicitly handle trail_percent/trail_price for trailing_stop.
+            # e.g., if order_type == "trailing_stop": order_params["trail_percent"] = X or order_params["trail_price"] = Y
+
+            order = self.api.submit_order(**order_params)
+            return {
+                "id": order.id,
+                "client_order_id": order.client_order_id,
+                "symbol": order.symbol,
+                "qty": float(order.qty),
+                "side": order.side,
+                "type": order.type,
+                "time_in_force": order.time_in_force,
+                "status": order.status,
+                "created_at": order.created_at.isoformat() if order.created_at else None,
+                "limit_price": float(order.limit_price) if order.limit_price else None,
+                "stop_price": float(order.stop_price) if order.stop_price else None,
+            }
+        except RateLimitException as rle:
+            return {"error": f"Rate limit exceeded for submit_trade_order: {rle}. Please try again shortly."}
+        except tradeapi.rest.APIError as apie:
+            # Catch specific Alpaca API errors for better feedback
+            return {"error": f"Alpaca API error: {apie.message} (Code: {apie.code})", "raw_error": str(apie)}
+        except Exception as e:
+            return {"error": f"Failed to submit order: {e}", "raw_error": str(e)}
+
 
 class TradeApp(App):
     """A Textual app for Alpaca Trading."""

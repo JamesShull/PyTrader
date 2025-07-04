@@ -94,5 +94,7 @@ websockets==10.4
     # via alpaca-trade-api
 yarl==1.20.1
     # via aiohttp
+fastapi
+uvicorn[standard]
 pytest
 pytest-mock
