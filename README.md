@@ -1,14 +1,18 @@
 # PyTrader
 
-PyTrader is a command-line tool for interacting with the Alpaca trading API. It provides both a Textual User Interface (TUI) for an interactive experience and direct CLI commands for specific actions like fetching stock quotes.
+PyTrader is a tool for interacting with the Alpaca trading API. It now features a web-based user interface, alongside its original Textual User Interface (TUI) and direct CLI commands.
 
 ## Features
 
-*   **Account Information:** View your Alpaca trading account status, equity, buying power, etc.
-*   **Stock Quotes:** Fetch and display real-time stock quotes.
-*   **Watchlist:** Load a list of symbols from a `watch.json` file or specify symbols directly.
-*   **TUI Mode:** An interactive terminal application for navigating features.
+*   **Web UI (New!):**
+    *   View account information (equity, buying power, etc.).
+    *   Display current positions with market values and P/L.
+    *   Place trade orders (buy/sell, various order types).
+*   **TUI Mode:** An interactive terminal application for navigating features (account info, quotes).
 *   **CLI Mode:** Direct commands for quick actions (e.g., getting quotes).
+*   **Account Information:** Access Alpaca trading account status.
+*   **Stock Quotes & Positions:** Fetch and display real-time stock quotes and current positions.
+*   **Watchlist (TUI):** Load a list of symbols from a `watch.json` file or specify symbols directly for the TUI.
 
 ## Setup
 
@@ -44,7 +48,36 @@ PyTrader is a command-line tool for interacting with the Alpaca trading API. It 
 
 ## Usage
 
-### Running the TUI Application
+### Running the Web UI Application
+
+The Web UI provides a modern interface for account overview, positions, and trading.
+
+1.  **Start the FastAPI Backend:**
+    *   Ensure your virtual environment is activated and API keys are set in `.env`.
+    *   From the project root directory (`PyTrader/`):
+        ```bash
+        uvicorn src.api:app --reload
+        ```
+    *   The backend API will typically be available at `http://127.0.0.1:8000`. You can access the API documentation at `http://127.0.0.1:8000/docs`.
+
+2.  **Start the Svelte Frontend:**
+    *   Open a new terminal.
+    *   Navigate to the `frontend` directory:
+        ```bash
+        cd frontend
+        ```
+    *   Install frontend dependencies (if you haven't already or if `package.json` changed):
+        ```bash
+        npm install
+        # or yarn install, or pnpm install
+        ```
+    *   Start the Svelte development server:
+        ```bash
+        npm run dev
+        ```
+    *   The frontend will typically be available at `http://localhost:5173`. Open this address in your web browser.
+
+### Running the TUI Application (Legacy)
 
 The TUI provides an interactive way to view account information and stock quotes.
 
