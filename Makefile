@@ -39,7 +39,7 @@ setup: install
 install: $(REQS_FILE)
 	@echo "Installing dependencies from $(REQS_FILE) and dev dependencies..."
 	. $(VENV_DIR)/bin/activate && uv pip install -r $(REQS_FILE)
-	. $(VENV_DIR)/bin/activate && uv pip install -e .[test] # Install dev dependencies specified in hatch env
+	. $(VENV_DIR)/bin/activate && uv pip install -e .[test]
 	@echo "Dependencies installed. To activate the virtual environment, run: source $(VENV_DIR)/bin/activate"
 
 # Clean up virtual environment and cache files
@@ -58,13 +58,12 @@ run: $(VENV_DIR)/bin/activate src/main.py
 # Run ruff linter and formatter
 lint: $(VENV_DIR)/bin/activate
 	@echo "Running ruff linter and formatter..."
-	. $(VENV_DIR)/bin/activate && uv pip install ruff --quiet # Ensure ruff is installed
 	. $(VENV_DIR)/bin/activate && ruff check . --fix && ruff format . && ruff check .
 
 # Run tests
 test: $(VENV_DIR)/bin/activate
 	@echo "Running tests..."
-	. $(VENV_DIR)/bin/activate && pytest tests/
+	. $(VENV_DIR)/bin/activate && export PYTHONPATH=./src && pytest
 
 # Create src directory and main.py if they don't exist
 # This also ensures __init__.py is present for hatch versioning
