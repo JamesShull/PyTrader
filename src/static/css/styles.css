@@ -25,6 +25,9 @@ body {
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 form {
@@ -35,6 +38,17 @@ form {
 }
 
 .login-icon {
-    font-size: 3rem;
+    max-width: 45px;
+    max-height: 45px;
+    display: block;
+    margin-bottom: 1rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+/* Center the Login title */
+h1 {
+    text-align: center;
+    width: 100%;
+    margin-top: 0.5rem;
     margin-bottom: 1rem;
 }
