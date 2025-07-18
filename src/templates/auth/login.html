@@ -2,31 +2,19 @@
 <html>
     <head>
         <title>Login</title>
-    <style>
-        body {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            margin: 0;
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            align-items: center;
-        }
-    </style>
+        <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
     </head>
     <body>
-        <h1>Login</h1>
-        <form action="/token" method="post">
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password">
-            <input type="submit" value="Login">
-        </form>
+        <div class="form-container">
+            <img src="{{ url_for('static', path='/img/login-icon.svg') }}" alt="Login Icon" class="login-icon">
+            <h1>Login</h1>
+            <form action="/token" method="post">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password">
+                <input type="submit" value="Login">
+            </form>
+        </div>
     </body>
 </html>
