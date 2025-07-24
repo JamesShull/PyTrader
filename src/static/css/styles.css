@@ -21,27 +21,33 @@ body {
 
 .form-container {
     background-color: white;
-    padding: 2rem;
+    padding: 3rem;
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     align-items: center;
+    height: 70vh;
+    width: 50vw;
+    max-width: 600px;
+    min-width: 400px;
+    justify-content: center;
 }
 
 form {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 20px;
     align-items: center;
+    width: 100%;
 }
 
 .login-icon {
-    max-width: 45px;
-    max-height: 45px;
+    max-width: 80px;
+    max-height: 80px;
     display: block;
-    margin-bottom: 1rem;
+    margin-bottom: 2rem;
     margin-left: auto;
     margin-right: auto;
 }
@@ -50,12 +56,35 @@ h1 {
     text-align: center;
     width: 100%;
     margin-top: 0.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 2rem;
+    font-size: 2.5rem;
 }
 
 .input-container {
     position: relative;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    width: 80%;
+}
+
+.input-container input {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.input-container input[type="submit"] {
+    background-color: var(--button-bg-color);
+    cursor: pointer;
+    margin-top: 10px;
+    padding: 18px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.input-container input[type="submit"]:hover {
+    background-color: var(--button-hover-bg-color);
 }
 
 .input-container label {
