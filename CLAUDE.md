@@ -13,68 +13,91 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make test` - Run pytest test suite
 
 ### Running the Application
-- `make run` - Start the TUI application (equivalent to `python src/main.py run-tui`)
-- `python src/main.py run-tui` - Run TUI with default watchlist (watch.json)
-- `python src/main.py run-tui --symbol AAPL,MSFT` - Run TUI with specific symbols
-- `python src/main.py get-quotes --symbols AAPL,GOOGL` - Get quotes via CLI (non-interactive)
+- `make run` - Start the web application (equivalent to `uvicorn src.main:app --reload`)
+- Access the application at `http://localhost:8000` after starting
 
 ### Single Test Execution
 - `call .venv\Scripts\activate && pytest tests/test_main.py::test_specific_function` - Run specific test
-- `call .venv\Scripts\activate && pytest tests/test_alpaca_service.py -v` - Run specific test file with verbose output
+- `call .venv\Scripts\activate && pytest tests/test_auth.py -v` - Run authentication tests with verbose output
 
 ## Architecture Overview
 
 ### Core Components
 
-**AlpacaService (src/main.py:24-106)**
-- Handles all Alpaca API interactions
-- Manages authentication using environment variables (APCA_API_KEY_ID, APCA_API_SECRET_KEY)
-- Provides methods: `get_account_info()`, `get_quotes(symbols)`
-- Gracefully handles connection failures and API errors
+**FastAPI Web Application (src/main.py)**
+- FastAPI-based web server with JWT authentication
+- Serves static files (CSS, images) and Jinja2 templates
+- Routes: `/` (login redirect), `/login`, `/token` (auth), `/home` (protected)
+- Development server runs with auto-reload for rapid iteration
 
-**TradeApp (src/main.py:108-268)**
-- Textual-based TUI application with reactive state management
-- Key bindings: 'v' (account), 'r' (quotes), 'p' (orders-WIP), 'q' (quit), 'd' (dark mode)
-- Uses DataTable for quotes display and Markdown for account information
-- Supports initial symbol loading from watchlist or command line
+**Authentication System (src/auth/)**
+- **security.py**: JWT token management, bcrypt password hashing, OAuth2 implementation
+- **model.py**: Pydantic models for Token, TokenData, and UserInDB
+- **routes.py**: Authentication route handlers (currently minimal)
+- In-memory user database with test users: `johndoe`/`secret` (user), `jshull`/`password` (admin+user)
 
-**CLI Interface (src/main.py:272-371)**
-- Click-based command structure with two main commands:
-  - `run-tui`: Interactive TUI mode
-  - `get-quotes`: Direct CLI quote fetching with Rich table output
+**Frontend Templates (src/templates/)**
+- **auth/login.html**: Animated login form with floating label inputs
+- **home.html**: Protected welcome page displaying authenticated user information
+- Server-side rendered with Jinja2 templating engine
+
+**Static Assets (src/static/)**
+- **css/styles.css**: Professional styling with CSS custom properties for theming
+- **img/**: SVG login icons and visual assets
 
 ### Configuration Files
 
 **Environment Setup**
-- Requires `.env` file with Alpaca API credentials
-- `watch.json` contains default symbol watchlist (JSON array of strings)
+- Requires `.env` file for JWT secret key and other configuration
 - `pyproject.toml` defines dependencies and tool configurations (ruff, pytest)
 
 **Dependencies**
-- Core: `click`, `textual`, `alpaca-trade-api`, `python-dotenv`, `colorama`
-- Development: `pytest`, `pytest-cov`, `pytest-asyncio`, `respx`
+- Core web: `fastapi`, `uvicorn`, `jinja2`, `python-multipart`
+- Authentication: `bcrypt`, `passlib`, `pyjwt`
+- Configuration: `python-dotenv`
+- Development: `pytest`
 - Code quality: `ruff` (linting and formatting)
 
 ### Key Design Patterns
 
-**Error Handling Strategy**
-- AlpacaService initialization gracefully handles missing credentials or connection failures
-- All API methods return dictionaries with "error" keys on failure
-- UI components check for error conditions before displaying data
+**JWT Authentication Flow**
+- Login form submits credentials to `/token` endpoint
+- Successful authentication returns JWT token stored in HTTP-only cookie
+- Protected routes require valid JWT token for access
+- Token contains user information and expiration timestamp
 
-**Reactive State Management**
-- Uses Textual's reactive variables for account_info and quotes_data
-- Async action methods for data fetching to prevent UI blocking
-- Widget visibility toggling between account and quotes views
+**Template-Based Rendering**
+- Server-side HTML generation using Jinja2 templates
+- Static CSS styling with custom properties for consistent theming
+- Responsive design with animated form interactions
+
+**Security Implementation**
+- Password hashing with bcrypt for secure credential storage
+- JWT tokens with configurable expiration times
+- HTTP-only cookies to prevent XSS token theft
+- OAuth2 password flow for standard authentication patterns
 
 **Testing Architecture**
-- Uses `respx` for mocking HTTP requests to Alpaca API
-- Tests cover both successful responses and error conditions
-- Environment variable mocking for testing different configuration scenarios
+- FastAPI TestClient for endpoint testing
+- Authentication flow testing with mock users
+- Template rendering and static file serving tests
+
+## Application Status
+
+**Current State**: Early-stage web application with authentication foundation
+- ✅ User authentication and session management
+- ✅ Basic web infrastructure and routing
+- ✅ Professional frontend styling and UX
+- ⏳ Trading functionality (not yet implemented)
+- ⏳ Stock quotes and market data integration
+- ⏳ Portfolio management features
+- ⏳ Order placement capabilities
+
+**Future Development**: The `src/app/` directory is prepared for additional application modules and trading functionality.
 
 ## Important Notes
 
-- The application defaults to Alpaca's paper trading environment for safety
-- Quote data includes bid/ask prices, sizes, and timestamps
-- Order placement functionality is marked as "Work In Progress"
+- The application currently focuses on authentication and web infrastructure
+- Trading functionality from the original TUI version is not yet implemented
+- Test users are available for development: `johndoe`/`secret` and `jshull`/`password`
 - Windows-specific Makefile commands (uses `call` and `Scripts\activate`)
