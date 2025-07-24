@@ -1,76 +1,24 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+requires-python = ">=3.12"
+
 [project]
-name = "alpaca-tui-trader"
-version = "0.1.0"
-description = "A TUI application for trading with Alpaca API"
-authors = [{ name = "Your Name", email = "you@example.com" }]
+name = "PyTrader"
+version = "0.0.1"
 dependencies = [
-    "click",
-    "textual",
-    "colorama",
-    "alpaca-trade-api",
-    "python-dotenv", # For managing API keys
+    "fastapi",
+    "uvicorn",
+    "bcrypt==4.0.1",
+    "passlib",
+    "python-multipart",
+    "pyjwt",
+    "python-dotenv",
+    "jinja2"
 ]
-requires-python = ">=3.8"
-readme = "README.md"
-license = { text = "MIT" }
 
 [project.optional-dependencies]
-test = [
-  "pytest",
-  "pytest-cov",
-  "pytest-asyncio", # For testing async code (Textual)
-  "respx", # For mocking HTTP requests (Alpaca API)
-]
+dev = ["pytest"]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-# Tell Hatch to include everything in the 'src' directory
-# and map it to the root of the wheel.
-# If 'src' contains a package 'my_package_name', use "src/my_package_name".
-# Since our main code is directly in 'src', and we want to import things from 'src'
-# (e.g. from src.main import ... if we had other modules)
-# we can specify 'src' and Hatch will figure out the package name from 'project.name'.
-# Or, more explicitly, if 'src' is the package:
-packages = ["src"]
-
-
-[tool.ruff]
-line-length = 88
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "PL", "TID"] # Enable Flake8, Pyflakes, Pycodestyle, isort, pyupgrade, Pylint, flake8-tidy-imports
-ignore = ["E501"] # Ignore line too long, handled by formatter
-
-[tool.ruff.format]
-quote-style = "double" # Use double quotes
-
-[tool.uv]
-# This section can be used if we want uv to manage the environment directly
-# but for now, we'll use venv and pip as per the Makefile for broader compatibility.
-# Uv will be used for dependency resolution via `uv pip compile` if we add that to Makefile.
-
-[tool.hatch.version]
-path = "src/__init__.py" # Assuming we will have a src/__init__.py
-
-# Hatch environment for development tasks like testing and linting
-[tool.hatch.envs.default]
-features = ["test"] # Include the 'test' optional dependencies
-
-[tool.hatch.envs.default.scripts]
-test = "pytest tests/"
-test-cov = "pytest --cov=src --cov-report=html tests/" # Corrected path for coverage
-lint = "ruff check . --fix && ruff format . && ruff check ."
-
-# Placeholder for src/__init__.py, create it if it doesn't exist
-# This is needed for hatch versioning
-# Ensure src directory exists before trying to create __init__.py within it
-# The Makefile handles src/main.py creation, let's also ensure src/__init__.py
-#
-# We can create src/__init__.py with the following content:
-# __version__ = "0.1.0"
-#
-# This will be handled in a subsequent step if needed.
-# For now, focusing on pyproject.toml content.
+[tool.setuptools.packages.find]
+where = ["src"]

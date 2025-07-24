@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: PyTrader
+Version: 0.0.1
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: bcrypt==4.0.1
+Requires-Dist: passlib
+Requires-Dist: python-multipart
+Requires-Dist: pyjwt
+Requires-Dist: python-dotenv
+Requires-Dist: jinja2
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"

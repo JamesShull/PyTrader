@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Login</title>
+        <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    </head>
+    <body>
+        <div class="form-container">
+            <img src="{{ url_for('static', path='/img/login-icon.svg') }}" alt="Login Icon" class="login-icon">
+            <h1>Login</h1>
+            <form action="/token" method="post">
+                <div class="input-container">
+                    <input type="text" id="username" name="username" placeholder=" ">
+                    <label for="username">Username</label>
+                </div>
+                <div class="input-container">
+                    <input type="password" id="password" name="password" placeholder=" ">
+                    <label for="password">Password</label>
+                </div>
+                <input type="submit" value="Login">
+            </form>
+        </div>
+        <script>
+            document.querySelectorAll('.input-container input').forEach(input => {
+                input.addEventListener('input', () => {
+                    if (input.value) {
+                        input.classList.add('has-content');
+                    } else {
+                        input.classList.remove('has-content');
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>
