@@ -18,7 +18,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "playwright"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
