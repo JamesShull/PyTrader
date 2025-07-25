@@ -34,7 +34,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **security.py**: JWT token management, bcrypt password hashing, OAuth2 implementation
 - **model.py**: Pydantic models for Token, TokenData, and UserInDB
 - **routes.py**: Authentication route handlers (currently minimal)
-- In-memory user database with test users: `johndoe`/`secret` (user), `jshull`/`password` (admin+user)
+- In-memory user database with test user: `admin`/`admin` (admin)
 
 **Frontend Templates (src/templates/)**
 - **auth/login.html**: Animated login form with floating label inputs
@@ -99,5 +99,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - The application currently focuses on authentication and web infrastructure
 - Trading functionality from the original TUI version is not yet implemented
-- Test users are available for development: `johndoe`/`secret` and `jshull`/`password`
+- Test user available for development: `admin`/`admin`
 - Windows-specific Makefile commands (uses `call` and `Scripts\activate`)

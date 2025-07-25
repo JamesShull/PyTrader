@@ -23,21 +23,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # For demonstration purposes, we'll use a simple in-memory database
 fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": pwd_context.hash("secret"),
+    "admin": {
+        "username": "admin",
+        "full_name": "Administrator",
+        "email": "admin@example.com",
+        "hashed_password": pwd_context.hash("admin"),
         "disabled": False,
-        "scopes": ["user"]
-    },
-    "jshull": {
-        "username": "jshull",
-        "full_name": "James Shull",
-        "email": "james.shull@gmail.com",
-        "hashed_password": pwd_context.hash("password"),
-        "disabled": False,
-        "scopes": ["admin", "user"]
+        "scopes": ["admin"]
     }
 }
 
