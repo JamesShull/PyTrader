@@ -1,10 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
-        <title>Home</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>PyTrader - Home</title>
+        <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='/img/favicon.svg') }}">
         <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
     </head>
     <body>
-        <h1>Welcome, {{ username }}!</h1>
+        <!-- Navigation Bar -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <img src="{{ url_for('static', path='/img/favicon.svg') }}" alt="PyTrader" class="nav-icon">
+                    <span class="nav-title">PyTrader</span>
+                </div>
+                
+                <div class="nav-links">
+                    <a href="/home" class="nav-link active">Home</a>
+                    <a href="/strategy" class="nav-link">Strategy</a>
+                    <a href="/more" class="nav-link">More</a>
+                </div>
+                
+                <div class="nav-user">
+                    <div class="user-dropdown">
+                        <button class="user-button" onclick="toggleDropdown()">
+                            <span class="user-name">{{ username }}</span>
+                            <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div class="dropdown-menu" id="userDropdown">
+                            <a href="/logout" class="dropdown-item">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M6 12H2V4H6M4 8H14M11 5L14 8L11 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-container">
+                <h1>Welcome, {{ username }}!</h1>
+                <p>Welcome to PyTrader - your trading platform.</p>
+                
+                <!-- Add some sample content to demonstrate scrolling -->
+                <div class="content-section">
+                    <h2>Recent Activity</h2>
+                    <p>Your trading dashboard will appear here.</p>
+                </div>
+                
+                <div class="content-section">
+                    <h2>Portfolio Overview</h2>
+                    <p>Portfolio statistics and performance metrics will be displayed here.</p>
+                </div>
+                
+                <div class="content-section">
+                    <h2>Market News</h2>
+                    <p>Latest market updates and news will appear here.</p>
+                </div>
+            </div>
+        </main>
+
+        <script>
+            function toggleDropdown() {
+                const dropdown = document.getElementById('userDropdown');
+                dropdown.classList.toggle('show');
+            }
+
+            // Close dropdown when clicking outside
+            window.onclick = function(event) {
+                if (!event.target.matches('.user-button') && !event.target.matches('.user-name') && !event.target.matches('.dropdown-arrow')) {
+                    const dropdowns = document.getElementsByClassName('dropdown-menu');
+                    for (let dropdown of dropdowns) {
+                        if (dropdown.classList.contains('show')) {
+                            dropdown.classList.remove('show');
+                        }
+                    }
+                }
+            }
+        </script>
     </body>
 </html>
