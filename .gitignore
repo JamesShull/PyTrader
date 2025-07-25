@@ -5,6 +5,6 @@ __pycache__
 .env.sample
 .secrets
 *.egg-info/
-site/
+docs_site/
 .pytest_cache/
 

@@ -1,7 +1,9 @@
 site_name: PyTrader Documentation
-site_description: A FastAPI-based trading application with JWT authentication
-site_author: PyTrader Team
+site_description: Web based trading app
+site_author: James Shull
 site_url: https://example.com
+site_dir: docs_site
+
 
 # Repository
 repo_name: PyTrader
